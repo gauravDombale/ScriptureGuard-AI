@@ -18,6 +18,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+backend/app/data/bible_kjv_source.json
 
 # Node / Next.js
 node_modules/
