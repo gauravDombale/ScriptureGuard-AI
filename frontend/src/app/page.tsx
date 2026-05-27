@@ -20,7 +20,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white text-[#111111]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col px-4 sm:px-6">
-        <header className="flex min-h-16 flex-col gap-3 border-b border-[#e5e7eb] py-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="sticky top-0 z-20 flex min-h-16 flex-col gap-3 border-b border-[#e5e7eb] bg-white py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-md bg-[#111111] text-white">
               <ShieldCheck aria-hidden="true" size={22} />
@@ -29,13 +29,6 @@ export default function Home() {
               <h1 className="display-title text-xl">ScriptureGuard AI</h1>
               <p className="text-sm text-[#6b7280]">Grounded answers with verified KJV citations</p>
             </div>
-          </div>
-          <div className="hidden rounded-full bg-[#f8f9fa] p-1 md:flex">
-            <span className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
-              Verified chat
-            </span>
-            <span className="px-3 py-1.5 text-sm font-medium text-[#6b7280]">Image prompts</span>
-            <span className="px-3 py-1.5 text-sm font-medium text-[#6b7280]">KJV corpus</span>
           </div>
           <DenominationPicker value={chat.denomination} onChange={chat.setDenomination} />
         </header>
@@ -65,37 +58,42 @@ export default function Home() {
             </div>
           </Card>
 
-          <aside className="hidden min-h-0 flex-col gap-4 lg:flex">
-            <SoftCard className="p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="display-title text-lg">Session</div>
-                <Badge>{chat.mode === "text" ? "Text" : "Image"}</Badge>
-              </div>
-              <div className="grid gap-3">
-                <StatusRow icon={FileText} label="Messages" value={String(chat.messages.length)} />
-                <StatusRow icon={CheckCircle2} label="Verified citations" value={String(verifiedCount)} />
-                <StatusRow icon={Sparkles} label="Lens" value={chat.denomination.replace("_", " ")} />
-              </div>
-            </SoftCard>
+          <aside className="hidden min-h-0 lg:block">
+            <div className="sticky top-24 flex flex-col gap-4">
+              <SoftCard className="p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="display-title text-lg">Session</div>
+                  <Badge>{chat.mode === "text" ? "Text" : "Image"}</Badge>
+                </div>
+                <div className="grid gap-3">
+                  <StatusRow icon={FileText} label="Messages" value={String(chat.messages.length)} />
+                  <StatusRow icon={CheckCircle2} label="Verified citations" value={String(verifiedCount)} />
+                  <StatusRow icon={Sparkles} label="Lens" value={chat.denomination.replace("_", " ")} />
+                </div>
+              </SoftCard>
 
-            <Card className="p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <ImageIcon aria-hidden="true" size={18} />
-                <div className="display-title text-lg">Image workflow</div>
-              </div>
-              <div className="rounded-lg bg-[#f5f5f5] p-4">
-                <div className="grid grid-cols-3 gap-2">
-                  {["Prompt", "Guard", "Render"].map((step) => (
-                    <div key={step} className="rounded-md bg-white px-2 py-3 text-center text-xs font-medium text-[#374151]">
-                      {step}
-                    </div>
-                  ))}
+              <Card className="p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <ImageIcon aria-hidden="true" size={18} />
+                  <div className="display-title text-lg">Image workflow</div>
                 </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                  <div className="h-full w-2/3 rounded-full bg-[#111111]" />
+                <div className="rounded-lg bg-[#f5f5f5] p-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Prompt", "Guard", "Render"].map((step) => (
+                      <div
+                        key={step}
+                        className="rounded-md bg-white px-2 py-3 text-center text-xs font-medium text-[#374151]"
+                      >
+                        {step}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                    <div className="h-full w-2/3 rounded-full bg-[#111111]" />
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           </aside>
         </section>
       </div>

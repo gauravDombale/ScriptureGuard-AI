@@ -11,14 +11,25 @@ type Props = {
 };
 
 export function ChatWindow({ messages, isLoading, error }: Props) {
+  const scrollRef = useRef<HTMLElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
 
   useEffect(() => {
+    if (!shouldAutoScrollRef.current) return;
     anchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isLoading]);
 
+  function handleScroll() {
+    const element = scrollRef.current;
+    if (!element) return;
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 96;
+  }
+
   return (
-    <section className="min-h-0 flex-1 overflow-y-auto p-4">
+    <section ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="grid gap-4">
         {messages.length === 0 && (
           <SoftCard className="p-5">
