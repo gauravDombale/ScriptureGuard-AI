@@ -1,7 +1,5 @@
 import { FormEvent, KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
-import { ImageIcon, TextCursorInput } from "lucide-react";
 import { Textarea } from "./ui/Textarea";
-import { cn } from "@/lib/utils";
 
 type Props = {
   mode: "text" | "image";
@@ -38,58 +36,50 @@ export function InputBar({ mode, onModeChange, onSend, isLoading }: Props) {
 
   return (
     <form ref={formRef} onSubmit={submit}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex h-12 w-fit shrink-0 rounded-full bg-[#f8f9fa] p-1">
+      <div className="relative">
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={2}
+          maxLength={2000}
+          className="max-h-40 min-h-12 w-full overflow-y-auto pb-14 pr-14"
+          placeholder={mode === "text" ? "Ask about Scripture or theology" : "Describe reverent Christian artwork"}
+        />
+        <div className="absolute bottom-3 left-3 flex items-center gap-3">
           <button
             type="button"
             title="Text mode"
             aria-pressed={mode === "text"}
             onClick={() => onModeChange("text")}
-            className={cn(
-              "grid h-10 w-10 place-items-center rounded-full text-[#6b7280]",
-              mode === "text" && "bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
-            )}
+            className="grid h-7 w-7 place-items-center opacity-45 transition-opacity aria-pressed:opacity-100"
           >
-            <TextCursorInput aria-hidden="true" size={18} />
+            <img src="/text-svgrepo-com.svg" alt="" aria-hidden="true" className="h-6 w-6" />
           </button>
           <button
             type="button"
             title="Image mode"
             aria-pressed={mode === "image"}
             onClick={() => onModeChange("image")}
-            className={cn(
-              "grid h-10 w-10 place-items-center rounded-full text-[#6b7280]",
-              mode === "image" && "bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
-            )}
+            className="grid h-7 w-7 place-items-center opacity-45 transition-opacity aria-pressed:opacity-100"
           >
-            <ImageIcon aria-hidden="true" size={18} />
+            <img src="/image-square-svgrepo-com.svg" alt="" aria-hidden="true" className="h-6 w-6" />
           </button>
         </div>
-        <div className="relative flex-1">
-          <Textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            maxLength={2000}
-            className="max-h-40 min-h-12 w-full overflow-y-auto pb-14 pr-14"
-            placeholder={mode === "text" ? "Ask about Scripture or theology" : "Describe reverent Christian artwork"}
+        <button
+          type="submit"
+          disabled={isLoading || !value.trim()}
+          title="Send"
+          className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <img
+            src="/arrow-sm-right-svgrepo-com.svg"
+            alt=""
+            aria-hidden="true"
+            className="h-6 w-6"
           />
-          <button
-            type="submit"
-            disabled={isLoading || !value.trim()}
-            title="Send"
-            className="absolute bottom-3 right-3 grid h-7 w-7 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <img
-              src="/arrow-sm-right-svgrepo-com.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-6 w-6"
-            />
-          </button>
-        </div>
+        </button>
       </div>
     </form>
   );

@@ -46,6 +46,17 @@ async def test_chat_pipeline_blocks_scripture_manipulation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_chat_pipeline_does_not_attach_irrelevant_citations() -> None:
+    pipeline = ChatPipeline(memory=MemoryService())
+
+    response = await pipeline.run(uuid4(), "who is vishnu", "protestant")
+
+    assert response.safety_blocked is False
+    assert response.citations == []
+    assert "Verified KJV references" not in response.response
+
+
+@pytest.mark.asyncio
 async def test_image_generation_router_returns_guarded_block() -> None:
     request = ImageRequest(
         session_id=uuid4(),

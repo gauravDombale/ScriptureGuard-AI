@@ -4,7 +4,12 @@ from typing import Any, TypedDict
 from uuid import UUID
 
 from app.models.schemas import ChatResponse, VerseCitation
-from app.services.bible_retriever import BibleRetriever, VerseChunk
+from app.services.bible_retriever import (
+    CHRISTIAN_CONTEXT_TERMS,
+    OUT_OF_SCOPE_RELIGION_TERMS,
+    BibleRetriever,
+    VerseChunk,
+)
 from app.services.denomination_service import denomination_note
 from app.services.historical_fact_checker import HistoricalFactChecker
 from app.services.llm_service import LLMService
@@ -283,7 +288,7 @@ class ChatPipeline:
         validation = self.validator.validate_citations(state.raw_response)
         state.raw_response = validation.cleaned_response
         state.citations = validation.valid_citations
-        if not state.citations and state.retrieved_verses:
+        if not state.citations and should_add_fallback_citations(state):
             seen_references: set[str] = set()
             fallback_citations: list[VerseCitation] = []
             for verse in state.retrieved_verses:
@@ -337,3 +342,16 @@ def state_from_dict(state: PipelineStateDict) -> PipelineState:
     for key, value in state.items():
         setattr(pipeline_state, key, value)
     return pipeline_state
+
+
+def should_add_fallback_citations(state: PipelineState) -> bool:
+    if not state.retrieved_verses:
+        return False
+    if state.retrieval_score is None:
+        return False
+    if state.retrieval_score < 0.75:
+        return False
+    lowered = state.message.lower()
+    has_out_of_scope_term = any(term in lowered for term in OUT_OF_SCOPE_RELIGION_TERMS)
+    has_christian_context = any(term in lowered for term in CHRISTIAN_CONTEXT_TERMS)
+    return not (has_out_of_scope_term and not has_christian_context)

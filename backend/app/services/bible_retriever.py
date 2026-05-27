@@ -60,6 +60,35 @@ REFERENCE_HINTS = {
     "cross": ["John 19:17", "John 19:18", "John 19:30"],
 }
 
+OUT_OF_SCOPE_RELIGION_TERMS = {
+    "vishnu",
+    "krishna",
+    "rama",
+    "shiva",
+    "brahma",
+    "hindu",
+    "hinduism",
+    "buddha",
+    "buddhism",
+    "allah",
+    "quran",
+    "islam",
+    "muhammad",
+}
+
+CHRISTIAN_CONTEXT_TERMS = {
+    "christian",
+    "christianity",
+    "bible",
+    "biblical",
+    "scripture",
+    "jesus",
+    "christ",
+    "god",
+    "church",
+    "kjv",
+}
+
 
 class BibleRetriever:
     def __init__(self) -> None:
@@ -68,6 +97,8 @@ class BibleRetriever:
     async def retrieve_verses(
         self, query: str, denomination: str, top_k: int = 5
     ) -> list[VerseChunk]:
+        if is_obvious_non_scripture_query(query):
+            return []
         local_hints = self._retrieve_reference_hints(query, top_k)
         if local_hints:
             return local_hints
@@ -142,6 +173,8 @@ class BibleRetriever:
             return hinted
 
         query_tokens = tokenize(query)
+        if not query_tokens:
+            return []
         scored: list[VerseChunk] = []
         for verse in load_bible():
             score = bm25_like_score(query_tokens, tokenize(verse.text), verse.reference.lower(), lowered)
@@ -170,7 +203,17 @@ def tokenize(text: str) -> tuple[str, ...]:
         "for",
         "with",
         "what",
+        "who",
+        "whom",
+        "whose",
+        "is",
+        "are",
+        "was",
+        "were",
         "does",
+        "about",
+        "tell",
+        "explain",
         "bible",
         "scripture",
         "offer",
@@ -196,3 +239,10 @@ def bm25_like_score(
     reference_bonus = 0.25 if any(token in reference for token in query_tokens) else 0.0
     phrase_bonus = 0.2 if " ".join(query_tokens[:2]) in " ".join(verse_tokens) else 0.0
     return density + reference_bonus + phrase_bonus
+
+
+def is_obvious_non_scripture_query(query: str) -> bool:
+    lowered = query.lower()
+    has_out_of_scope_term = any(term in lowered for term in OUT_OF_SCOPE_RELIGION_TERMS)
+    has_christian_context = any(term in lowered for term in CHRISTIAN_CONTEXT_TERMS)
+    return has_out_of_scope_term and not has_christian_context

@@ -86,3 +86,11 @@ async def test_retriever_prioritizes_explicit_reference() -> None:
 
     assert verses
     assert verses[0].reference == "John 3:16"
+
+
+async def test_retriever_ignores_generic_non_scripture_question() -> None:
+    retriever = BibleRetriever()
+
+    verses = await retriever.retrieve_verses("who is vishnu", "protestant")
+
+    assert verses == []
