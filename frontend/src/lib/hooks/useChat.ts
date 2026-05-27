@@ -89,23 +89,40 @@ export function useChat(sessionId: string) {
           return;
         }
 
+        const assistantId = crypto.randomUUID();
+        setMessages((current) => [
+          ...current,
+          {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            citations: [],
+            isImageLoading: true,
+            prompt: content,
+          },
+        ]);
+
         const response = await sendChat({
           session_id: sessionId,
           message: content,
           denomination,
           mode,
         });
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: response.response,
-            citations: response.citations,
-            imageUrl: response.image_url,
-            blocked: response.safety_blocked,
-          },
-        ]);
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  content: response.response,
+                  citations: response.citations,
+                  imageUrl: response.image_url,
+                  blocked: response.safety_blocked,
+                  isImageLoading: false,
+                  prompt: undefined,
+                }
+              : message,
+          ),
+        );
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Request failed");
       } finally {

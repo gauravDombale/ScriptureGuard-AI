@@ -1,5 +1,8 @@
 import { FormEvent, useState } from "react";
 import { ImageIcon, Send, TextCursorInput } from "lucide-react";
+import { Button } from "./ui/Button";
+import { Textarea } from "./ui/Textarea";
+import { cn } from "@/lib/utils";
 
 type Props = {
   mode: "text" | "image";
@@ -20,17 +23,18 @@ export function InputBar({ mode, onModeChange, onSend, isLoading }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="border-t border-[#d8d0c2] pt-4">
+    <form onSubmit={submit}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex h-11 w-fit rounded-md border border-[#bdb3a2] bg-white p-1">
+        <div className="flex h-11 w-fit rounded-full bg-[#f8f9fa] p-1">
           <button
             type="button"
             title="Text mode"
             aria-pressed={mode === "text"}
             onClick={() => onModeChange("text")}
-            className={`grid h-9 w-10 place-items-center rounded ${
-              mode === "text" ? "bg-[#173f35] text-white" : "text-[#3c3933]"
-            }`}
+            className={cn(
+              "grid h-9 w-10 place-items-center rounded-full text-[#6b7280]",
+              mode === "text" && "bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+            )}
           >
             <TextCursorInput aria-hidden="true" size={18} />
           </button>
@@ -39,29 +43,31 @@ export function InputBar({ mode, onModeChange, onSend, isLoading }: Props) {
             title="Image mode"
             aria-pressed={mode === "image"}
             onClick={() => onModeChange("image")}
-            className={`grid h-9 w-10 place-items-center rounded ${
-              mode === "image" ? "bg-[#173f35] text-white" : "text-[#3c3933]"
-            }`}
+            className={cn(
+              "grid h-9 w-10 place-items-center rounded-full text-[#6b7280]",
+              mode === "image" && "bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+            )}
           >
             <ImageIcon aria-hidden="true" size={18} />
           </button>
         </div>
-        <textarea
+        <Textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
           rows={2}
           maxLength={2000}
-          className="min-h-12 flex-1 resize-none rounded-md border border-[#bdb3a2] bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-[#2f6f61]"
+          className="min-h-12 flex-1"
           placeholder={mode === "text" ? "Ask about Scripture or theology" : "Describe reverent Christian artwork"}
         />
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={isLoading || !value.trim()}
           title="Send"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-[#173f35] text-white disabled:cursor-not-allowed disabled:bg-[#9a958c]"
+          className="h-12 w-12 shrink-0 px-0"
         >
           <Send aria-hidden="true" size={18} />
-        </button>
+        </Button>
       </div>
     </form>
   );

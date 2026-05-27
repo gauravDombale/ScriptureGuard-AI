@@ -1,7 +1,9 @@
 import Image from "next/image";
 import { Bot, Loader2, User } from "lucide-react";
 import type { ChatMessage } from "@/types";
+import { cn } from "@/lib/utils";
 import { CitationCard } from "./CitationCard";
+import { ImageGenerationLoader } from "./ImageGenerationLoader";
 import { SafetyBanner } from "./SafetyBanner";
 
 type Props = {
@@ -14,23 +16,27 @@ export function MessageBubble({ message }: Props) {
   return (
     <article className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#173f35] text-white">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#e5e7eb] bg-white text-[#111111]">
           <Bot aria-hidden="true" size={18} />
         </div>
       )}
       <div
-        className={`max-w-[86%] rounded-md px-4 py-3 shadow-sm sm:max-w-[72%] ${
+        className={cn(
+          "max-w-[88%] rounded-lg px-4 py-3 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.05)] sm:max-w-[76%]",
           isUser
-            ? "bg-[#2f6f61] text-white"
-            : "border border-[#d8d0c2] bg-white text-[#1c1b18]"
-        }`}
+            ? "bg-[#111111] text-white"
+            : "border border-[#e5e7eb] bg-white text-[#111111]",
+          message.isImageLoading && "w-full max-w-full sm:max-w-[92%]",
+        )}
       >
-        {message.blocked ? (
+        {message.isImageLoading ? (
+          <ImageGenerationLoader prompt={message.prompt} />
+        ) : message.blocked ? (
           <SafetyBanner message={message.content} />
         ) : (
           <div className="grid gap-2">
             {message.streamStatus && (
-              <div className="flex items-center gap-2 text-xs text-[#625c52]" role="status">
+              <div className="flex items-center gap-2 text-xs text-[#6b7280]" role="status">
                 <Loader2 aria-hidden="true" className="animate-spin" size={14} />
                 <span>{message.streamStatus}</span>
               </div>
@@ -38,14 +44,14 @@ export function MessageBubble({ message }: Props) {
             <p className="whitespace-pre-wrap text-sm leading-6">
               {message.content}
               {message.isStreaming && message.content && (
-                <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-[#2f6f61] align-text-bottom" />
+                <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-[#111111] align-text-bottom" />
               )}
             </p>
           </div>
         )}
 
         {message.imageUrl && (
-          <div className="mt-3 overflow-hidden rounded-md border border-[#d8d0c2]">
+          <div className="mt-3 overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fa]">
             {message.imageUrl.startsWith("data:") ? (
               <img
                 src={message.imageUrl}
@@ -73,7 +79,7 @@ export function MessageBubble({ message }: Props) {
         )}
       </div>
       {isUser && (
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#6b4f2a] text-white">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f5f5f5] text-[#111111]">
           <User aria-hidden="true" size={18} />
         </div>
       )}

@@ -2,8 +2,8 @@
 
 :root {
   color-scheme: light;
-  --background: #f7f4ed;
-  --foreground: #1c1b18;
+  --background: #ffffff;
+  --foreground: #111111;
 }
 
 * {
@@ -14,7 +14,8 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 button,
@@ -22,4 +23,78 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+.display-title {
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.image-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.image-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: image-shimmer 2s infinite;
+  pointer-events: none;
+}
+
+.image-pulse-dot {
+  animation: image-pulse-ring 1.8s infinite;
+}
+
+.image-step {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: image-step-fade 0.6s forwards;
+}
+
+.image-step:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.image-step:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.image-step:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+.image-step:nth-child(4) {
+  animation-delay: 0.85s;
+}
+
+@keyframes image-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes image-pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.75;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.75;
+  }
+}
+
+@keyframes image-step-fade {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

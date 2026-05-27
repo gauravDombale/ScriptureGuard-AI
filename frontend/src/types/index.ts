@@ -38,4 +38,6 @@ export type ChatMessage = {
   blocked?: boolean;
   isStreaming?: boolean;
   streamStatus?: string;
+  isImageLoading?: boolean;
+  prompt?: string;
 };

@@ -1,4 +1,5 @@
 import type { Denomination } from "@/types";
+import { Select } from "./ui/Select";
 
 const OPTIONS: { value: Denomination; label: string }[] = [
   { value: "protestant", label: "Protestant" },
@@ -15,19 +16,19 @@ type Props = {
 
 export function DenominationPicker({ value, onChange }: Props) {
   return (
-    <label className="flex items-center gap-2 text-sm text-[#3c3933]">
-      <span>Lens</span>
-      <select
+    <label className="flex items-center gap-2 text-sm font-medium text-[#374151]">
+      <span className="text-[#6b7280]">Lens</span>
+      <Select
         value={value}
         onChange={(event) => onChange(event.target.value as Denomination)}
-        className="h-10 rounded-md border border-[#bdb3a2] bg-white px-3 text-sm text-[#1c1b18] outline-none focus:border-[#2f6f61]"
+        className="w-[190px]"
       >
         {OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
