@@ -1,0 +1,34 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Markdown/docs policy for this submission
+*.md
+!Readme.md
+
+# Local assignment/source materials
+AGENT.md
+AI Assignment - SoluLab.pdf
+architecture.md
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
