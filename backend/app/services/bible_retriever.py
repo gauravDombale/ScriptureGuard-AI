@@ -49,6 +49,12 @@ REFERENCE_HINTS = {
     "grace": ["Ephesians 2:8", "Romans 3:24"],
     "james": ["James 1:5"],
     "wisdom": ["James 1:5", "Proverbs 9:10"],
+    "jesus died": ["John 19:30", "Luke 23:46", "Mark 15:37"],
+    "jesus die": ["John 19:30", "Luke 23:46", "Mark 15:37"],
+    "jesus death": ["John 19:30", "Luke 23:46", "Mark 15:37"],
+    "crucified": ["John 19:18", "John 19:30", "Luke 23:46"],
+    "crucifixion": ["John 19:18", "John 19:30", "Luke 23:46"],
+    "cross": ["John 19:17", "John 19:18", "John 19:30"],
 }
 
 
@@ -59,6 +65,10 @@ class BibleRetriever:
     async def retrieve_verses(
         self, query: str, denomination: str, top_k: int = 5
     ) -> list[VerseChunk]:
+        local_hints = self._retrieve_reference_hints(query, top_k)
+        if local_hints:
+            return local_hints
+
         if self.settings.openai_api_key and self.settings.pinecone_api_key:
             pinecone_results = await self._retrieve_from_pinecone(query, denomination, top_k)
             if pinecone_results:
@@ -106,7 +116,7 @@ class BibleRetriever:
             )
         return chunks
 
-    def _retrieve_locally(self, query: str, top_k: int) -> list[VerseChunk]:
+    def _retrieve_reference_hints(self, query: str, top_k: int) -> list[VerseChunk]:
         lowered = query.lower()
         hinted: list[VerseChunk] = []
         for phrase, references in REFERENCE_HINTS.items():
@@ -115,8 +125,13 @@ class BibleRetriever:
                     verse = get_verse(reference)
                     if verse:
                         hinted.append(VerseChunk.from_verse(verse, 0.95))
+        return hinted[:top_k]
+
+    def _retrieve_locally(self, query: str, top_k: int) -> list[VerseChunk]:
+        lowered = query.lower()
+        hinted = self._retrieve_reference_hints(query, top_k)
         if hinted:
-            return hinted[:top_k]
+            return hinted
 
         query_tokens = tokenize(query)
         scored: list[VerseChunk] = []

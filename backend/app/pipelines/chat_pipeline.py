@@ -283,6 +283,30 @@ class ChatPipeline:
         validation = self.validator.validate_citations(state.raw_response)
         state.raw_response = validation.cleaned_response
         state.citations = validation.valid_citations
+        if not state.citations and state.retrieved_verses:
+            seen_references: set[str] = set()
+            fallback_citations: list[VerseCitation] = []
+            for verse in state.retrieved_verses:
+                if verse.reference in seen_references:
+                    continue
+                seen_references.add(verse.reference)
+                fallback_citations.append(
+                    VerseCitation(reference=verse.reference, text=verse.text, verified=True)
+                )
+            warning = (
+                "\n\nNote: I could not verify one or more references, so I removed or flagged them. "
+                "Please consult your Bible directly."
+            )
+            clean_response = state.raw_response.replace(warning, "").rstrip()
+            state.raw_response = (
+                clean_response
+                + "\n\nVerified KJV references:\n"
+                + "\n".join(
+                    f'[{citation.reference}] "{citation.text}"'
+                    for citation in fallback_citations
+                )
+            )
+            state.citations = fallback_citations
         return state
 
     async def historical_fact_checker_node(self, state: PipelineState) -> PipelineState:
