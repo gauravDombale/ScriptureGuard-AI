@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -5,6 +6,8 @@ from functools import lru_cache
 
 from app.config import get_settings
 from app.services.bible_corpus import Verse, get_verse, load_bible
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,7 +85,11 @@ class BibleRetriever:
             from openai import AsyncOpenAI
             from pinecone import Pinecone
 
-            openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            openai_client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=self.settings.external_request_timeout_seconds,
+                max_retries=self.settings.openai_max_retries,
+            )
             embedding = await openai_client.embeddings.create(
                 model=self.settings.openai_embedding_model, input=query
             )
@@ -95,6 +102,7 @@ class BibleRetriever:
                 filter=self._denomination_filter(denomination),
             )
         except Exception:
+            logger.exception("Pinecone scripture retrieval failed; using local fallback")
             return []
 
         chunks: list[VerseChunk] = []

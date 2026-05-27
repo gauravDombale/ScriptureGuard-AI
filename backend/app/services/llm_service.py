@@ -1,6 +1,10 @@
+import logging
+
 from app.config import get_settings
 from app.services.bible_retriever import VerseChunk
 from app.services.denomination_service import canon_difference_note, get_denomination_context
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a knowledgeable, respectful Christian AI assistant grounded in scripture.
 
@@ -55,7 +59,11 @@ class LLMService:
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=self.settings.external_request_timeout_seconds,
+                max_retries=self.settings.openai_max_retries,
+            )
             completion = await client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=[
@@ -73,6 +81,7 @@ class LLMService:
             )
             return completion.choices[0].message.content or None
         except Exception:
+            logger.exception("OpenAI chat completion failed; using local fallback")
             return None
 
     async def stream_response(
@@ -91,7 +100,11 @@ class LLMService:
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=self.settings.external_request_timeout_seconds,
+                max_retries=self.settings.openai_max_retries,
+            )
             stream = await client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=[
@@ -116,6 +129,7 @@ class LLMService:
                 if delta:
                     yield delta
         except Exception:
+            logger.exception("OpenAI chat stream failed; using local fallback")
             local_response = self._generate_local_response(message, denomination, retrieved_verses)
             for chunk in chunk_text(local_response):
                 yield chunk

@@ -1,8 +1,11 @@
+import logging
 import re
 from dataclasses import dataclass
 
 from app.config import get_settings
 from app.services.safety_service import SafetyService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,7 +58,11 @@ class ImageService:
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=self.settings.image_generation_timeout_seconds,
+                max_retries=self.settings.openai_max_retries,
+            )
             image = await client.images.generate(
                 model=self.settings.dalle_model,
                 prompt=guard.revised_prompt,
@@ -70,6 +77,7 @@ class ImageService:
                 return f"data:image/png;base64,{image_data.b64_json}", guard
             return None, GuardResult(True, guard.revised_prompt, "Image generation returned no image.")
         except Exception as exc:
+            logger.exception("OpenAI image generation failed")
             return None, GuardResult(True, guard.revised_prompt, f"Image generation failed: {exc}")
 
 

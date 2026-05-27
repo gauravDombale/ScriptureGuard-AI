@@ -1,7 +1,10 @@
 import json
+import logging
 from datetime import datetime, timezone
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryService:
@@ -19,6 +22,7 @@ class MemoryService:
             self._client = from_url(self.settings.redis_url, decode_responses=True)
             await self._client.ping()
         except Exception:
+            logger.exception("Redis memory connection failed; using in-process memory fallback")
             self._client = False
         return self._client
 
@@ -44,19 +48,30 @@ class MemoryService:
         redis = await self._redis()
         key = f"session:{session_id}:history"
         if redis:
-            await redis.set(key, json.dumps(turns), ex=86400)
+            try:
+                await redis.set(key, json.dumps(turns), ex=86400)
+            except Exception:
+                logger.exception("Redis memory write failed; preserving turn in process memory")
+                self._local[session_id] = turns
         else:
             self._local[session_id] = turns
 
     async def clear_session(self, session_id: str) -> None:
         redis = await self._redis()
         if redis:
-            await redis.delete(f"session:{session_id}:history")
+            try:
+                await redis.delete(f"session:{session_id}:history")
+            except Exception:
+                logger.exception("Redis memory delete failed")
         self._local.pop(session_id, None)
 
     async def _get_turns(self, session_id: str) -> list[dict]:
         redis = await self._redis()
         if redis:
-            raw = await redis.get(f"session:{session_id}:history")
-            return json.loads(raw) if raw else []
+            try:
+                raw = await redis.get(f"session:{session_id}:history")
+                return json.loads(raw) if raw else []
+            except Exception:
+                logger.exception("Redis memory read failed; using in-process memory fallback")
+                return self._local.get(session_id, [])
         return self._local.get(session_id, [])

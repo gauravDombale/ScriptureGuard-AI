@@ -7,6 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
+    environment: str = "development"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o"
     openai_embedding_model: str = "text-embedding-3-small"
@@ -26,6 +27,15 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     local_fallbacks: bool = True
+    external_request_timeout_seconds: float = 60.0
+    image_generation_timeout_seconds: float = 300.0
+    openai_max_retries: int = 2
+    auto_create_tables: bool = True
+    api_keys: str = ""
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 120
+    max_request_body_bytes: int = 1_000_000
+    metrics_enabled: bool = True
 
     model_config = SettingsConfigDict(
         env_file=(PROJECT_ROOT / ".env", ".env"),
@@ -36,6 +46,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def api_key_set(self) -> set[str]:
+        return {key.strip() for key in self.api_keys.split(",") if key.strip()}
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
 
 
 @lru_cache

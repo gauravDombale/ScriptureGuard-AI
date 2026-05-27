@@ -1,8 +1,11 @@
+import logging
 import re
 from dataclasses import dataclass
 
 from app.config import get_settings
 from app.services.denomination_service import get_denomination_context
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -59,7 +62,11 @@ class SafetyService:
         try:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=self.settings.external_request_timeout_seconds,
+                max_retries=self.settings.openai_max_retries,
+            )
             response = await client.moderations.create(input=text)
             result = response.results[0]
             scores = result.category_scores.model_dump()
@@ -72,6 +79,7 @@ class SafetyService:
                     category="openai_moderation",
                 )
         except Exception:
+            logger.exception("OpenAI moderation failed; allowing custom safety checks to continue")
             return ModerationResult(allowed=True, blocked=False)
         return ModerationResult(allowed=True, blocked=False)
 

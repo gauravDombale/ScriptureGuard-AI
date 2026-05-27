@@ -1,17 +1,14 @@
-import { backendUrl, proxyError } from "../_backend";
+import { proxyError, proxyPost } from "../_backend";
 
 export async function POST(request: Request) {
   try {
-    const response = await fetch(backendUrl("/chat"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: await request.text(),
-    });
+    const response = await proxyPost(request, "/chat");
 
     return new Response(response.body, {
       status: response.status,
       headers: {
         "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+        "X-Request-ID": response.headers.get("X-Request-ID") ?? "",
       },
     });
   } catch (error) {

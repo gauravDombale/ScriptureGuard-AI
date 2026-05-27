@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, streamChat } from "@/lib/api";
 import type { ChatMessage, Denomination } from "@/types";
 
@@ -10,10 +10,22 @@ export function useChat(sessionId: string) {
   const [mode, setMode] = useState<"text" | "image">("text");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      activeRequestRef.current?.abort();
+    };
+  }, []);
 
   const send = useCallback(
     async (content: string) => {
-      if (!sessionId || !content.trim()) return;
+      if (!sessionId || !content.trim() || isLoading) return;
+      activeRequestRef.current?.abort();
+      const controller = new AbortController();
+      activeRequestRef.current = controller;
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "user",
@@ -48,7 +60,7 @@ export function useChat(sessionId: string) {
               onDelta: (delta) => {
                 setMessages((current) =>
                   current.map((message) =>
-                    message.id === assistantId
+                    message.id === assistantId && activeRequestRef.current === controller
                       ? {
                           ...message,
                           content: message.content + delta,
@@ -61,7 +73,7 @@ export function useChat(sessionId: string) {
               onStatus: (status) => {
                 setMessages((current) =>
                   current.map((message) =>
-                    message.id === assistantId
+                    message.id === assistantId && activeRequestRef.current === controller
                       ? { ...message, streamStatus: status }
                       : message,
                   ),
@@ -70,7 +82,7 @@ export function useChat(sessionId: string) {
               onFinal: (response) => {
                 setMessages((current) =>
                   current.map((message) =>
-                    message.id === assistantId
+                    message.id === assistantId && activeRequestRef.current === controller
                       ? {
                           ...message,
                           content: response.response,
@@ -85,6 +97,7 @@ export function useChat(sessionId: string) {
                 );
               },
             },
+            { signal: controller.signal },
           );
           return;
         }
@@ -102,15 +115,18 @@ export function useChat(sessionId: string) {
           },
         ]);
 
-        const response = await sendChat({
-          session_id: sessionId,
-          message: content,
-          denomination,
-          mode,
-        });
+        const response = await sendChat(
+          {
+            session_id: sessionId,
+            message: content,
+            denomination,
+            mode,
+          },
+          { signal: controller.signal },
+        );
         setMessages((current) =>
           current.map((message) =>
-            message.id === assistantId
+            message.id === assistantId && activeRequestRef.current === controller
               ? {
                   ...message,
                   content: response.response,
@@ -124,12 +140,33 @@ export function useChat(sessionId: string) {
           ),
         );
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Request failed");
+        if (controller.signal.aborted) return;
+        const message = caught instanceof Error ? caught.message : "Request failed";
+        setError(message);
+        setMessages((current) =>
+          current.map((chatMessage) =>
+            chatMessage.isStreaming || chatMessage.isImageLoading
+              ? {
+                  ...chatMessage,
+                  isStreaming: false,
+                  isImageLoading: false,
+                  streamStatus: undefined,
+                  content: chatMessage.content || message,
+                  blocked: chatMessage.blocked,
+                }
+              : chatMessage,
+          ),
+        );
       } finally {
-        setIsLoading(false);
+        if (activeRequestRef.current === controller) {
+          activeRequestRef.current = null;
+        }
+        if (mountedRef.current) {
+          setIsLoading(false);
+        }
       }
     },
-    [denomination, mode, sessionId],
+    [denomination, isLoading, mode, sessionId],
   );
 
   return {

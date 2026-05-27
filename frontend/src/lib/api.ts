@@ -2,11 +2,29 @@ import type { ChatRequest, ChatResponse } from "@/types";
 
 const API_URL = "/api";
 
-export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
+type RequestOptions = {
+  signal?: AbortSignal;
+};
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function sendChat(
+  request: ChatRequest,
+  options: RequestOptions = {},
+): Promise<ChatResponse> {
   if (request.mode === "image") {
     const response = await fetch(`${API_URL}/image/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: options.signal,
       body: JSON.stringify({
         session_id: request.session_id,
         prompt: request.message,
@@ -15,7 +33,7 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
       }),
     });
     if (!response.ok) {
-      throw new Error(`Image request failed: ${response.status}`);
+      throw await apiError(response, "Image request failed");
     }
     const image = await response.json();
     return {
@@ -33,10 +51,11 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
   const response = await fetch(`${API_URL}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: options.signal,
     body: JSON.stringify(request),
   });
   if (!response.ok) {
-    throw new Error(`Chat request failed: ${response.status}`);
+    throw await apiError(response, "Chat request failed");
   }
   return response.json();
 }
@@ -48,14 +67,16 @@ export async function streamChat(
     onFinal: (response: ChatResponse) => void;
     onStatus?: (message: string) => void;
   },
+  options: RequestOptions = {},
 ): Promise<void> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: options.signal,
     body: JSON.stringify(request),
   });
   if (!response.ok) {
-    throw new Error(`Chat stream failed: ${response.status}`);
+    throw await apiError(response, "Chat stream failed");
   }
   if (!response.body) {
     throw new Error("Chat stream response has no body");
@@ -65,19 +86,24 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
-    for (const event of events) {
-      handleSseEvent(event, handlers);
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const event of events) {
+        handleSseEvent(event, handlers);
+      }
     }
-  }
 
-  if (buffer.trim()) {
-    handleSseEvent(buffer, handlers);
+    const remaining = buffer + decoder.decode();
+    if (remaining.trim()) {
+      handleSseEvent(remaining, handlers);
+    }
+  } finally {
+    reader.releaseLock();
   }
 }
 
@@ -89,12 +115,30 @@ function handleSseEvent(
     onStatus?: (message: string) => void;
   },
 ) {
-  const dataLine = rawEvent
+  const data = rawEvent
     .split("\n")
-    .find((line) => line.startsWith("data:"));
-  if (!dataLine) return;
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice("data:".length).trimStart())
+    .join("\n");
+  if (!data) return;
 
-  const payload = JSON.parse(dataLine.slice("data:".length).trim());
+  let payload: {
+    type?: string;
+    content?: string;
+    message?: string;
+    response?: string;
+    citations?: ChatResponse["citations"];
+    session_id?: string;
+    safety_blocked?: boolean;
+    block_reason?: string | null;
+    denomination_notes?: string | null;
+    retrieval_score?: number | null;
+  };
+  try {
+    payload = JSON.parse(data);
+  } catch {
+    throw new Error("Received malformed chat stream event");
+  }
   if (payload.type === "delta") {
     handlers.onDelta(payload.content ?? "");
     return;
@@ -119,4 +163,20 @@ function handleSseEvent(
 
 function requestSessionId(payload: { session_id?: string }) {
   return payload.session_id ?? "";
+}
+
+async function apiError(response: Response, fallback: string): Promise<ApiError> {
+  let detail = "";
+  try {
+    const contentType = response.headers.get("Content-Type") ?? "";
+    if (contentType.includes("application/json")) {
+      const payload = await response.json();
+      detail = typeof payload.detail === "string" ? payload.detail : "";
+    } else {
+      detail = await response.text();
+    }
+  } catch {
+    detail = "";
+  }
+  return new ApiError(detail || `${fallback}: ${response.status}`, response.status);
 }
