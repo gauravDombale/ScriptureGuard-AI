@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:standalone": "mkdir -p .next/standalone/.next .next/standalone/public && cp -R .next/static .next/standalone/.next/static && cp -R public/. .next/standalone/public/ && node .next/standalone/server.js",
+    "start:standalone": "mkdir -p .next/standalone/.next/static .next/standalone/public && cp -R .next/static/. .next/standalone/.next/static/ && cp -R public/. .next/standalone/public/ && node .next/standalone/server.js",
     "lint": "next lint"
   },
   "dependencies": {
