@@ -8,6 +8,7 @@ export async function POST(request: Request) {
       status: response.status,
       headers: {
         "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
         "Content-Type": response.headers.get("Content-Type") ?? "text/event-stream",
         "X-Accel-Buffering": "no",
         "X-Request-ID": response.headers.get("X-Request-ID") ?? "",
