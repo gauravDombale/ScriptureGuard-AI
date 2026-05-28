@@ -34,6 +34,92 @@ This project uses current LTS-compatible runtime choices for the stack used here
 | Logs | PostgreSQL with SQLAlchemy async |
 | Local orchestration | Docker Compose |
 
+## Architecture
+
+The app is split into a Next.js frontend, a FastAPI backend, and supporting infrastructure for memory, logging, retrieval, and model calls. The browser talks to the Next.js API proxy first, then the proxy calls the backend. This keeps browser requests same-origin and avoids CORS problems during local production testing.
+
+```mermaid
+flowchart LR
+    User[User Browser]
+    UI[Next.js UI]
+    Proxy[Next.js API Proxy<br/>/api/chat<br/>/api/chat/stream<br/>/api/image/generate]
+    API[FastAPI Backend]
+    Pipeline[Chat Pipeline]
+    Safety[Safety Service]
+    Retrieval[Bible Retriever]
+    Validator[Verse Validator]
+    LLM[OpenAI Chat Model]
+    Image[OpenAI Image Model]
+    Corpus[(Local KJV Corpus)]
+    Pinecone[(Pinecone Index)]
+    Redis[(Redis Session Memory)]
+    Postgres[(PostgreSQL Logs)]
+
+    User --> UI
+    UI --> Proxy
+    Proxy --> API
+    API --> Pipeline
+    Pipeline --> Safety
+    Pipeline --> Retrieval
+    Retrieval --> Corpus
+    Retrieval -. semantic search .-> Pinecone
+    Pipeline --> LLM
+    Pipeline --> Validator
+    Validator --> Corpus
+    Pipeline --> Redis
+    API --> Postgres
+    API --> Image
+    Image --> API
+    API --> Proxy
+    Proxy --> UI
+```
+
+### Chat Pipeline
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Next.js Frontend
+    participant B as FastAPI Backend
+    participant S as Safety Guard
+    participant R as Retriever
+    participant L as LLM
+    participant V as Verse Validator
+    participant M as Memory and Logs
+
+    U->>F: Ask a theology or Scripture question
+    F->>B: POST /chat or /chat/stream
+    B->>S: Check safety and adversarial patterns
+    alt blocked
+        S-->>B: Refusal reason
+        B-->>F: Safe refusal response
+    else allowed
+        B->>R: Retrieve relevant KJV verses
+        R-->>B: Candidate verses and scores
+        B->>L: Prompt with denomination context and retrieved verses
+        L-->>B: Draft answer
+        B->>V: Validate every cited reference
+        V-->>B: Verified citations and cleaned response
+        B->>M: Save memory and audit logs
+        B-->>F: Final response or streaming events
+    end
+```
+
+## Development Tradeoffs
+
+| Decision | Tradeoff | Why this project uses it |
+| --- | --- | --- |
+| Local KJV corpus as citation source of truth | Limits citation validation to one public-domain translation | Guarantees cited verses can be verified locally and avoids licensing issues with modern translations |
+| Pinecone plus local fallback retrieval | Adds an external dependency, but local fallback is less semantically strong | Gives production-style vector retrieval while keeping the app testable when Pinecone is unavailable |
+| Next.js API proxy in front of FastAPI | Adds an extra hop between browser and backend | Prevents local CORS friction and keeps frontend calls same-origin in development and production-style runs |
+| Server-Sent Events for chat streaming | One-way stream only, less flexible than WebSockets | Fits token streaming well, is simple to debug with `curl -N`, and avoids unnecessary WebSocket state |
+| FastAPI for backend | Requires a separate frontend/backend runtime | Keeps the safety, retrieval, validation, and model pipeline strongly typed and easy to test independently |
+| Redis for session memory | Memory is operationally separate from the app process | Keeps conversation context fast and disposable without coupling it to long-term audit logs |
+| PostgreSQL for conversation logs | More setup than file logging | Gives durable audit data for evals, debugging, and future analytics |
+| Denomination prompts as rendered natural language | Less compact than raw metadata injection | Prevents internal metadata leaks like `canon=`, `notes=`, or `distinctives=` in final responses |
+| Guarded image generation instead of direct image calls | Adds safety checks and longer request time | Keeps image generation aligned with Christian-themed constraints and reduces unsafe prompt risk |
+| Next.js standalone production start script | Requires copying static assets before local standalone startup | Preserves Docker-style standalone output while fixing local CSS and JavaScript asset serving |
+
 ## Repository Structure
 
 ```text
