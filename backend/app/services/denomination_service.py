@@ -26,18 +26,79 @@ DENOMINATIONS = {
     },
 }
 
+DENOMINATION_CONTEXTS = {
+    "protestant": (
+        "You are responding from a Protestant perspective. Key distinctives: "
+        "Sola Scriptura (Scripture alone as authority), salvation by faith alone, "
+        "66-book canon. Do not mention purgatory or deuterocanonical texts. "
+        "Do not expose internal metadata."
+    ),
+    "catholic": (
+        "You are responding from a Catholic perspective. Key distinctives: "
+        "Scripture and Tradition as co-equal authority, 73-book canon including "
+        "deuterocanonical texts, belief in purgatory and seven sacraments. "
+        "Do not expose internal metadata."
+    ),
+    "orthodox": (
+        "You are responding from an Eastern Orthodox perspective. Key distinctives: "
+        "Holy Tradition and Scripture, theosis (union with God), icons, Ecumenical "
+        "Councils as doctrinal authority. Do not expose internal metadata."
+    ),
+    "evangelical": (
+        "You are responding from an Evangelical perspective. Key distinctives: "
+        "biblical inerrancy, necessity of personal born-again conversion experience, "
+        "strong missions focus, salvation through personal acceptance of Jesus. "
+        "Do not expose internal metadata."
+    ),
+    "non_denominational": (
+        "You are responding from a Non-denominational perspective. Provide a purely "
+        "scripture-grounded answer with no tradition-specific doctrinal framing. Do not "
+        "reference creeds, councils, or denomination-specific practices. Do not expose "
+        "internal metadata."
+    ),
+}
+
+DENOMINATION_NOTES = {
+    "protestant": (
+        "Protestant perspective: emphasizes Scripture as the final authority, "
+        "salvation by faith alone, and the 66-book canon."
+    ),
+    "catholic": (
+        "Catholic perspective: reads Scripture with Sacred Tradition, recognizes the "
+        "73-book canon, and includes sacramental and purgatory teachings where relevant."
+    ),
+    "orthodox": (
+        "Eastern Orthodox perspective: reads Scripture within Holy Tradition, emphasizing "
+        "theosis, icons, and the Ecumenical Councils."
+    ),
+    "evangelical": (
+        "Evangelical perspective: emphasizes biblical authority, personal born-again "
+        "conversion, missions, and assurance through personal faith in Jesus."
+    ),
+    "non_denominational": (
+        "Bible-focused perspective: keeps the answer grounded in the cited passages "
+        "without extra framing."
+    ),
+}
+
 
 def get_denomination_context(denomination: str) -> str:
-    info = DENOMINATIONS.get(denomination, DENOMINATIONS["protestant"])
-    distinctives = ", ".join(info["distinctives"]) if info["distinctives"] else "no fixed list"
-    return (
-        f"{denomination.replace('_', ' ').title()} lens: canon={info['canon']}; "
-        f"notes={info['notes']}; distinctives={distinctives}."
-    )
+    return DENOMINATION_CONTEXTS.get(denomination, DENOMINATION_CONTEXTS["protestant"])
 
 
 def denomination_note(denomination: str) -> str:
-    return get_denomination_context(denomination)
+    return DENOMINATION_NOTES.get(denomination, DENOMINATION_NOTES["protestant"])
+
+
+def denomination_label(denomination: str) -> str:
+    labels = {
+        "protestant": "Protestant",
+        "catholic": "Catholic",
+        "orthodox": "Eastern Orthodox",
+        "evangelical": "Evangelical",
+        "non_denominational": "Non-denominational",
+    }
+    return labels.get(denomination, labels["protestant"])
 
 
 def canon_difference_note(query: str, denomination: str) -> str | None:

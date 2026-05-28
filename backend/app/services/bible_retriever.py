@@ -58,6 +58,11 @@ REFERENCE_HINTS = {
     "crucified": ["John 19:18", "John 19:30", "Luke 23:46"],
     "crucifixion": ["John 19:18", "John 19:30", "Luke 23:46"],
     "cross": ["John 19:17", "John 19:18", "John 19:30"],
+    "after death": ["John 11:25", "2 Corinthians 5:8", "Philippians 1:23"],
+    "believers after death": ["John 11:25", "2 Corinthians 5:8", "Philippians 1:23"],
+    "what happens to believers after death": ["John 11:25", "2 Corinthians 5:8", "Philippians 1:23"],
+    "heaven": ["John 14:2", "2 Corinthians 5:8", "Philippians 1:23"],
+    "romans 10:9": ["Romans 10:9"],
 }
 
 OUT_OF_SCOPE_RELIGION_TERMS = {

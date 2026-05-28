@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 
 from app.config import get_settings
-from app.services.denomination_service import get_denomination_context
+from app.services.denomination_service import denomination_label
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +117,9 @@ def graceful_refusal(category: str) -> str:
 
 
 def graceful_theological_response(topic: str, denomination: str) -> str:
-    context = get_denomination_context(denomination)
+    label = denomination_label(denomination)
     return (
-        f"This is an important and complex topic. From a {context} I would approach it with "
+        f"This is an important and complex topic. From a {label} perspective, I would approach it with "
         "care, humility, and direct attention to Scripture rather than slogans. Christians have "
         "thoughtfully debated parts of this question across traditions, so it is wise to speak "
         "with a pastor, priest, or spiritual director who knows the real people involved."

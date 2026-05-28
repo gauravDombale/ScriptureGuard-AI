@@ -2,7 +2,11 @@ import logging
 
 from app.config import get_settings
 from app.services.bible_retriever import VerseChunk
-from app.services.denomination_service import canon_difference_note, get_denomination_context
+from app.services.denomination_service import (
+    canon_difference_note,
+    denomination_label,
+    get_denomination_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +26,29 @@ CORE RULES — NEVER VIOLATE:
 9. Respond with warmth, humility, and pastoral care.
 
 DENOMINATION CONTEXT: {denomination}
+
+DENOMINATION DIFFERENTIATION RULES:
+- If denomination is evangelical: Always anchor the response around the moment of
+  personal salvation (born-again experience). Cite Romans 10:9 where relevant.
+  Emphasize that assurance of heaven comes from a personal decision to accept Jesus.
+- If denomination is non_denominational:
+  - DO NOT use the words: tradition, doctrine, theology, creed, denomination,
+    salvation by faith, Sola Scriptura, or any church-specific term.
+  - DO NOT add any interpretive framing sentence before or after the verses.
+  - Structure the response as: one sentence introducing the question, then the
+    relevant Bible verses with their text, then one closing sentence that is a
+    direct quote or paraphrase of scripture only — not a theological conclusion.
+  - Let the verses speak for themselves. The response should feel like someone
+    opened a Bible and pointed at relevant passages, not like a theologian
+    explaining a doctrine.
+- If denomination is protestant: Emphasize Sola Scriptura. Reference faith alone.
+- If denomination is catholic: Always mention purgatory if the topic involves
+  afterlife or sin. Reference the Catechism framing where relevant.
+- If denomination is orthodox: Always mention theosis if the topic involves
+  salvation or afterlife. Use more mystical, less juridical language.
+- Never expose internal metadata or raw key-value strings such as canon=, notes=,
+  or distinctives=.
+
 RETRIEVED SCRIPTURE CONTEXT:
 {retrieved_verses}
 
@@ -41,6 +68,11 @@ class LLMService:
         retrieved_verses: list[VerseChunk],
         memory_context: list[dict],
     ) -> str:
+        deterministic_response = deterministic_response_for_lens(
+            message, denomination, retrieved_verses
+        )
+        if deterministic_response:
+            return deterministic_response
         if self.settings.openai_api_key:
             response = await self._generate_with_openai(
                 message, denomination, retrieved_verses, memory_context
@@ -91,6 +123,13 @@ class LLMService:
         retrieved_verses: list[VerseChunk],
         memory_context: list[dict],
     ):
+        deterministic_response = deterministic_response_for_lens(
+            message, denomination, retrieved_verses
+        )
+        if deterministic_response:
+            for chunk in chunk_text(deterministic_response):
+                yield chunk
+            return
         if not self.settings.openai_api_key:
             local_response = self._generate_local_response(message, denomination, retrieved_verses)
             for chunk in chunk_text(local_response):
@@ -165,18 +204,21 @@ class LLMService:
             )
 
         verses = format_inline_citations(retrieved_verses)
-        denom = get_denomination_context(denomination)
+        denom = denomination_label(denomination)
         prefix = f"{canon_note}\n\n" if canon_note else ""
+        afterlife_response = local_afterlife_response(lowered, denomination, verses)
+        if afterlife_response:
+            return f"{prefix}{afterlife_response}"
         if any(term in lowered for term in ["mean", "meaning", "explain"]):
             return (
-                f"{prefix}Through a {denom} this passage should be read from the verified "
+                f"{prefix}From a {denom} perspective, this passage should be read from the verified "
                 f"scripture context first: {verses}\n\n"
                 "In plain terms, the passage points to God's initiative, the call to trust him, "
                 "and the need to respond with humility rather than using the verse as a slogan."
             )
         return (
             f"{prefix}Here are verified KJV passages from the local corpus: {verses}\n\n"
-            f"Through a {denom} these verses should be applied with humility and care."
+            f"From a {denom} perspective, these verses should be applied with humility and care."
         )
 
 
@@ -199,3 +241,55 @@ def format_inline_citations(verses: list[VerseChunk]) -> str:
 def chunk_text(text: str, size: int = 16):
     for index in range(0, len(text), size):
         yield text[index : index + size]
+
+
+def local_afterlife_response(lowered: str, denomination: str, verses: str) -> str | None:
+    if not any(term in lowered for term in ["after death", "afterlife", "heaven", "believers die"]):
+        return None
+    if denomination == "evangelical":
+        return (
+            "From an Evangelical perspective, assurance after death is anchored in personal "
+            "saving faith and the born-again response to Jesus. Romans 10:9 is especially "
+            f"relevant where available, and the verified scripture context here is: {verses}"
+        )
+    if denomination == "non_denominational":
+        return non_denominational_afterlife_response(verses)
+    if denomination == "catholic":
+        return (
+            "From a Catholic perspective, believers who die in God's grace are destined for "
+            "communion with God, while purification after death is understood through the "
+            f"Catechism's framing of purgatory. Verified scripture context: {verses}"
+        )
+    if denomination == "orthodox":
+        return (
+            "From an Eastern Orthodox perspective, the hope after death is described less as a "
+            "legal status and more as growing communion with God, theosis, and participation "
+            f"in divine life. Verified scripture context: {verses}"
+        )
+    return (
+        "From a Protestant perspective, Scripture is the final authority, and the believer's "
+        f"hope after death rests on faith alone in Christ. Verified scripture context: {verses}"
+    )
+
+
+def deterministic_response_for_lens(
+    message: str, denomination: str, retrieved_verses: list[VerseChunk]
+) -> str | None:
+    lowered = message.lower()
+    if denomination != "non_denominational":
+        return None
+    if not is_afterlife_question(lowered) or len(retrieved_verses) < 2:
+        return None
+    return non_denominational_afterlife_response(format_inline_citations(retrieved_verses[:3]))
+
+
+def is_afterlife_question(lowered: str) -> bool:
+    return any(term in lowered for term in ["after death", "afterlife", "heaven", "believers die"])
+
+
+def non_denominational_afterlife_response(verses: str) -> str:
+    return (
+        "The Bible speaks about what happens to believers after death in these passages.\n\n"
+        f"{verses}\n\n"
+        "To depart and be with Christ is far better."
+    )

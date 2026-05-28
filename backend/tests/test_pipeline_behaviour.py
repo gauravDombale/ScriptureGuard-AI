@@ -9,6 +9,8 @@ from app.services.image_service import ImageService
 from app.services.logging_service import LoggingService
 from app.services.memory_service import MemoryService
 
+LEAK_MARKERS = ("canon=", "notes=", "distinctives=")
+
 
 @pytest.mark.asyncio
 async def test_chat_pipeline_returns_verified_john_316_citation() -> None:
@@ -54,6 +56,53 @@ async def test_chat_pipeline_does_not_attach_irrelevant_citations() -> None:
     assert response.safety_blocked is False
     assert response.citations == []
     assert "Verified KJV references" not in response.response
+
+
+@pytest.mark.asyncio
+async def test_non_denominational_afterlife_response_is_scripture_only() -> None:
+    pipeline = ChatPipeline(memory=MemoryService())
+
+    response = await pipeline.run(
+        uuid4(), "What happens to believers after death?", "non_denominational"
+    )
+    lowered = response.response.lower()
+
+    for term in ["doctrine", "theology", "tradition", "salvation", "creed"]:
+        assert term not in lowered
+    assert len(response.citations) >= 2
+    assert response.response.rstrip().endswith("To depart and be with Christ is far better.")
+
+
+@pytest.mark.asyncio
+async def test_non_denominational_afterlife_differs_from_protestant() -> None:
+    pipeline = ChatPipeline(memory=MemoryService())
+
+    non_denom = await pipeline.run(
+        uuid4(), "What happens to believers after death?", "non_denominational"
+    )
+    protestant = await pipeline.run(
+        uuid4(), "What happens to believers after death?", "protestant"
+    )
+
+    assert non_denom.response != protestant.response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Does the Bible say anything about abortion?",
+        "Which religion is the only true one?",
+    ],
+)
+async def test_chat_pipeline_never_exposes_raw_denomination_metadata(message: str) -> None:
+    pipeline = ChatPipeline(memory=MemoryService())
+
+    response = await pipeline.run(uuid4(), message, "protestant")
+    output = response.model_dump_json()
+
+    for marker in LEAK_MARKERS:
+        assert marker not in output
 
 
 @pytest.mark.asyncio
